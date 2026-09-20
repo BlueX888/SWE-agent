@@ -206,9 +206,17 @@ class TagToolCallObservations(BaseModel):
         return bool(self.function_names & function_names)
 
     def __call__(self, history: History) -> History:
-        for entry in history:
+        for i, entry in enumerate(history):
             if self._should_add_tags(entry):
-                self._add_tags(entry)
+                # The tags control how LastNObservations treats an *observation*
+                # (its always_keep/always_remove_output_for_tags act on entries
+                # with message_type "observation"), so they must land on the
+                # observation that follows the matched action, not on the action
+                # itself.
+                for follower in history[i + 1 :]:
+                    if follower.get("message_type") == "observation":
+                        self._add_tags(follower)
+                        break
         return history
 
 
